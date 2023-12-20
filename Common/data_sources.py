@@ -5,6 +5,7 @@ BINDING_DB = 'BINDING-DB'
 CAM_KP = 'CAM-KP'
 CHEBI_PROPERTIES = 'CHEBIProps'
 CLINICAL_TRIALS_KP = 'ClinicalTrialsKP'
+CLINGEN_DOSAGE_SENSITIVITY = 'ClinGenDosageSensitivity'
 CORD19 = 'Cord19'
 COHD = 'COHD'
 CTD = 'CTD'
@@ -32,6 +33,7 @@ METABOLOMICS_WORKBENCH = 'MetabolomicsWorkbench'
 MONARCH_KG = 'MonarchKG'
 MONDO_PROPS = 'MONDOProps'
 OHD_CAROLINA = 'OHD-Carolina'
+NCBI_GENE_PARSER = 'NCBIGeneParser'
 ONTOLOGICAL_HIERARCHY = 'OntologicalHierarchy'
 PANTHER = 'PANTHER'
 PHAROS = 'PHAROS'
@@ -60,6 +62,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     CAM_KP: ("parsers.camkp.src.loadCAMKP", "CAMKPLoader"),
     CHEBI_PROPERTIES: ("parsers.chebi.src.loadChebiProperties", "ChebiPropertiesLoader"),
     CLINICAL_TRIALS_KP: ("parsers.clinicaltrials.src.loadCTKP", "CTKPLoader"),
+    CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
     CORD19: ("parsers.cord19.src.loadCord19", "Cord19Loader"),
     COHD: ("parsers.cohd.src.loadCOHD", "COHDLoader"),
     CTD: ("parsers.CTD.src.loadCTD", "CTDLoader"),
@@ -87,6 +90,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     MONARCH_KG: ("parsers.monarchkg.src.loadMonarchKG", "MonarchKGLoader"),
     MONDO_PROPS: ("parsers.MONDOProperties.src.loadMP", "MPLoader"),
     OHD_CAROLINA: ("parsers.ohd_carolina.src.loadOHD", "OHDLoader"),
+    NCBI_GENE_PARSER:("parsers.NCBIGeneParser.src.loadNCBIGeneParser", "NCBIGeneParser"),
     ONTOLOGICAL_HIERARCHY: ("parsers.UberGraph.src.loadUG", "OHLoader"),
     PANTHER: ("parsers.panther.src.loadPanther", "PLoader"),
     PHAROS: ("parsers.PHAROS.src.loadPHAROS", "PHAROSLoader"),
