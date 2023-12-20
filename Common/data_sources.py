@@ -5,6 +5,7 @@ BINDING_DB = 'BINDING-DB'
 BIOLINK = 'Biolink'
 CAM_KP = 'CAM-KP'
 CHEBI_PROPERTIES = 'CHEBIProps'
+CLINGEN_DOSAGE_SENSITIVITY = 'ClinGenDosageSensitivity'
 CORD19 = 'Cord19'
 CTD = 'CTD'
 DRUG_CENTRAL = 'DrugCentral'
@@ -47,6 +48,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     BIOLINK: ("parsers.biolink.src.loadBL", "BLLoader"),
     CAM_KP: ("parsers.camkp.src.loadCAMKP", "CAMKPLoader"),
     CHEBI_PROPERTIES: ("parsers.chebi.src.loadChebiProperties", "ChebiPropertiesLoader"),
+CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
     CORD19: ("parsers.cord19.src.loadCord19", "Cord19Loader"),
     CTD: ("parsers.CTD.src.loadCTD", "CTDLoader"),
     DRUG_CENTRAL: ("parsers.drugcentral.src.loaddrugcentral", "DrugCentralLoader"),
