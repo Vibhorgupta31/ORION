@@ -252,8 +252,8 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         example_file: str = os.path.join(self.data_path, self.example_data_file)
         with gzip.open(example_file, 'rt') as fp:
             extractor.csv_extract(fp,
-                                  lambda line: get_gene_id(line[GENERICDATACOLS.GENE_ID.value]) ,  # subject id
-                                  lambda line: get_gene_id(line[GENERICDATACOLS.GENE_ID.value]) ,  # object id
+                                  lambda line: get_gene_id(line[GENERICDATACOLS.ATTRIBUTES.value]) ,  # subject id
+                                  lambda line: get_gene_id(line[GENERICDATACOLS.ATTRIBUTES.value]) ,  # object id
                                   lambda line: 'equivalent to',  # predicate extractor
                                   lambda line: dict({'SEQUENCE':line[GENERICDATACOLS.CHROMOSOME.value]}),  # subject properties
                                   lambda line: {},  # object properties
@@ -266,6 +266,5 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         return extractor.load_metadata
 
 def get_gene_id(attribute):
-    gene_info = attribute[-1].split(";")
-    gene_id = gene_info[0].split(" ")[1].strip('"')
+    gene_id = attribute[0].split(" ")[1].strip('"')
     return gene_id
