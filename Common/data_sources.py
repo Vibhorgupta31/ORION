@@ -21,6 +21,7 @@ HMDB = 'HMDB'
 HUMAN_GOA = 'HumanGOA'
 INTACT = 'IntAct'
 MONDO_PROPS = 'MONDOProps'
+NCBI_GENE_PARSER = 'NCBIGeneParser'
 ONTOLOGICAL_HIERARCHY = 'OntologicalHierarchy'
 PANTHER = 'PANTHER'
 PHAROS = 'PHAROS'
@@ -48,7 +49,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     BIOLINK: ("parsers.biolink.src.loadBL", "BLLoader"),
     CAM_KP: ("parsers.camkp.src.loadCAMKP", "CAMKPLoader"),
     CHEBI_PROPERTIES: ("parsers.chebi.src.loadChebiProperties", "ChebiPropertiesLoader"),
-CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
+    CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
     CORD19: ("parsers.cord19.src.loadCord19", "Cord19Loader"),
     CTD: ("parsers.CTD.src.loadCTD", "CTDLoader"),
     DRUG_CENTRAL: ("parsers.drugcentral.src.loaddrugcentral", "DrugCentralLoader"),
@@ -64,6 +65,7 @@ CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDo
     HUMAN_STRING: ("parsers.STRING.src.loadSTRINGDB", "HumanSTRINGDBLoader"),
     INTACT: ("parsers.IntAct.src.loadIA", "IALoader"),
     MONDO_PROPS: ("parsers.MONDOProperties.src.loadMP", "MPLoader"),
+    NCBI_GENE_PARSER:("parsers.NCBIGeneParser.src.loadNCBIGeneParser", "NCBIGeneParser"),
     ONTOLOGICAL_HIERARCHY: ("parsers.UberGraph.src.loadUG", "OHLoader"),
     PANTHER: ("parsers.panther.src.loadPanther", "PLoader"),
     PHAROS: ("parsers.PHAROS.src.loadPHAROS", "PHAROSLoader"),
