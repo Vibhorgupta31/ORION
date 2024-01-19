@@ -28,6 +28,7 @@ KINACE = 'KinAce'
 MOLEPRO = 'MolePro'
 MONARCH_KG = 'MonarchKG'
 MONDO_PROPS = 'MONDOProps'
+NCBI_GENE_PARSER = 'NCBIGeneParser'
 ONTOLOGICAL_HIERARCHY = 'OntologicalHierarchy'
 PANTHER = 'PANTHER'
 PHAROS = 'PHAROS'
@@ -78,6 +79,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     MOLEPRO: ("parsers.molepro.src.loadMolePro", "MoleProLoader"),
     MONARCH_KG: ("parsers.monarchkg.src.loadMonarchKG", "MonarchKGLoader"),
     MONDO_PROPS: ("parsers.MONDOProperties.src.loadMP", "MPLoader"),
+    NCBI_GENE_PARSER:("parsers.NCBIGeneParser.src.loadNCBIGeneParser", "NCBIGeneParser"),
     ONTOLOGICAL_HIERARCHY: ("parsers.UberGraph.src.loadUG", "OHLoader"),
     PANTHER: ("parsers.panther.src.loadPanther", "PLoader"),
     PHAROS: ("parsers.PHAROS.src.loadPHAROS", "PHAROSLoader"),
