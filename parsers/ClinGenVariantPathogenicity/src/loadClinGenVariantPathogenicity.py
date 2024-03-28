@@ -4,7 +4,7 @@ import gzip
 
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
-from Common.node_types import PRIMARY_KNOWLEDGE_SOURCE
+from Common.node_types import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
 from Common.prefixes import HGNC  # only an example, use existing curie prefixes or add your own to the prefixes file
 from Common.utils import GetData
 from datetime import date
@@ -35,9 +35,9 @@ class ClinGenVariantPathogenicityCOLS(enum.IntEnum):
 
 
 ##############
-# Class: XXXX source loader
+# Class: ClinGenVariantPathogenicity  source loader
 #
-# Desc: Class that loads/parses the XXXX data.
+# Desc: Class that loads/parses the ClinGenVariantPathogenicity data.
 ##############
 class ClinGenVariantPathogenicityLoader(SourceDataLoader):
     source_id: str = 'ClinGenVariantPathogenicity'
@@ -45,6 +45,7 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
     provenance_id: str = 'infores:clingen'
     # increment parsing_version whenever changes are made to the parser that would result in changes to parsing output
     parsing_version: str = '1.0'
+    has_sequence_variants = True  # Flag to use robokop_genetics server to tackle sequence vaiant dataΩ
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
@@ -91,15 +92,22 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
                                   lambda line: f'CLINVARVARIANT:{line[ClinGenVariantPathogenicityCOLS.CLINVAR_VARIATION_ID.value]}',  # subject id
                                   lambda line: f'{line[ClinGenVariantPathogenicityCOLS.MONDO_ID.value]}',  # object id
                                   lambda line: 'is pathogenic for',  # predicate extractor
-                                  lambda line: {},  # subject properties
+                                  lambda line: {NODE_TYPES: SEQUENCE_VARIANT,
+                                                'Variation':line[ClinGenVariantPathogenicityCOLS.VARIATION.value],
+                                                'HGVS_Gene_Symbol':line[ClinGenVariantPathogenicityCOLS.HGNC_GENE_SYMBOL.value]},  # subject properties
                                   lambda line: {},  # object properties
                                   lambda line: {PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                                                'Assertion' : line[ClinGenVariantPathogenicityCOLS.ASSERTION.value],
                                                 'Mode_Of_Inheritance': line[ClinGenVariantPathogenicityCOLS.MODE_OF_INHERITANCE.value],
                                                 'Applied_Evidence_Codes_Met':line[ClinGenVariantPathogenicityCOLS.APPLIED_EVIDENCE_CODES_MET.value],
                                                 'Applied_Evidence_Codes_Not_Met':line[ClinGenVariantPathogenicityCOLS.APPLIED_EVIDENCE_CODES_NOT_MET.value],
                                                 "Summary":line[ClinGenVariantPathogenicityCOLS.SUMMARY_OF_INTERPRETATION.value],
                                                 "Pubmed_Articles":line[ClinGenVariantPathogenicityCOLS.PUBMED_ARTICLES.value],
-                                                "Expert_Panel":line[ClinGenVariantPathogenicityCOLS.EXPERT_PANEL.value]},  # edge properties
+                                                "Expert_Panel":line[ClinGenVariantPathogenicityCOLS.EXPERT_PANEL.value],
+                                                "Evidence_Repo_Link":line[ClinGenVariantPathogenicityCOLS.EVIDENCE_REPO_LINK.value],
+                                                'Guideline':line[ClinGenVariantPathogenicityCOLS.GUIDELINE.value],
+                                                'Approval_Date':line[ClinGenVariantPathogenicityCOLS.APPROVAL_DATE.value],
+                                                "Published_Date":line[ClinGenVariantPathogenicityCOLS.APPROVAL_DATE.value]},  # edge properties
                                   comment_character='#',
                                   delim='\t',
                                   has_header_row=True)
