@@ -4,7 +4,7 @@ import importlib
 BINDING_DB = 'BINDING-DB'
 CAM_KP = 'CAM-KP'
 CHEBI_PROPERTIES = 'CHEBIProps'
-CLINGEN_VARIANT_PATHOGENECITY = 'ClinGenVariantPathogenicity'
+CLINGEN_VARIANT_PATHOGENICITY = 'ClinGenVariantPathogenicity'
 CORD19 = 'Cord19'
 CTD = 'CTD'
 DRUG_CENTRAL = 'DrugCentral'
@@ -52,7 +52,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     BINDING_DB: ("parsers.BINDING.src.loadBINDINGDB", "BINDINGDBLoader"),
     CAM_KP: ("parsers.camkp.src.loadCAMKP", "CAMKPLoader"),
     CHEBI_PROPERTIES: ("parsers.chebi.src.loadChebiProperties", "ChebiPropertiesLoader"),
-    CLINGEN_VARIANT_PATHOGENECITY: ("parsers.ClinGenVariantPathogenicity.src.loadClinGenVariantPathogenicity", "ClinGenVariantPathogenicityLoader"),
+    CLINGEN_VARIANT_PATHOGENICITY: ("parsers.ClinGenVariantPathogenicity.src.loadClinGenVariantPathogenicity", "ClinGenVariantPathogenicityLoader"),
     CORD19: ("parsers.cord19.src.loadCord19", "Cord19Loader"),
     CTD: ("parsers.CTD.src.loadCTD", "CTDLoader"),
     DRUG_CENTRAL: ("parsers.drugcentral.src.loaddrugcentral", "DrugCentralLoader"),

@@ -1,12 +1,15 @@
 import os
 import enum
 import gzip
+import re
 
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
-from Common.node_types import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
+from biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
 from Common.prefixes import HGNC  # only an example, use existing curie prefixes or add your own to the prefixes file
 from Common.utils import GetData
+from Common.utils import LoggingUtil
+import logging
 from datetime import date
 
 
@@ -45,7 +48,7 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
     provenance_id: str = 'infores:clingen'
     # increment parsing_version whenever changes are made to the parser that would result in changes to parsing output
     parsing_version: str = '1.0'
-    has_sequence_variants = True  # Flag to use robokop_genetics server to tackle sequence vaiant dataΩ
+    has_sequence_variants = True  # Flag to use robokop_genetics server to tackle sequence variant data
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
@@ -67,9 +70,6 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
         # get_data is responsible for fetching the files in self.data_files and saving them to self.data_path
         source_data_url = f'{self.example_url}{self.example_data_file}'
         data_puller = GetData()
-        print(source_data_url)
-        print(self.data_path)
-        print(self.example_data_file)
         data_puller.pull_via_http(source_data_url, self.data_path)
         return True
 
@@ -98,7 +98,7 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
                                   lambda line: {},  # object properties
                                   lambda line: {PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
                                                 'Assertion' : line[ClinGenVariantPathogenicityCOLS.ASSERTION.value],
-                                                'Mode_Of_Inheritance': line[ClinGenVariantPathogenicityCOLS.MODE_OF_INHERITANCE.value],
+                                                'Mode_Of_Inheritance': moi_normalizer(line[ClinGenVariantPathogenicityCOLS.MODE_OF_INHERITANCE.value],line[ClinGenVariantPathogenicityCOLS.EVIDENCE_REPO_LINK.value]),
                                                 'Applied_Evidence_Codes_Met':line[ClinGenVariantPathogenicityCOLS.APPLIED_EVIDENCE_CODES_MET.value],
                                                 'Applied_Evidence_Codes_Not_Met':line[ClinGenVariantPathogenicityCOLS.APPLIED_EVIDENCE_CODES_NOT_MET.value],
                                                 "Summary":line[ClinGenVariantPathogenicityCOLS.SUMMARY_OF_INTERPRETATION.value],
@@ -112,3 +112,33 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
                                   delim='\t',
                                   has_header_row=True)
         return extractor.load_metadata
+
+# Function to normalize the mode_of_inheritance property over the edge
+def moi_normalizer(MOI,EREPO_LINK):
+    MOI = str(MOI)
+    HPO = ''
+    if MOI == 'Autosomal dominant inheritance':
+        # req = requests.get("https://hpo.jax.org/api/hpo/term/HP:0000006")
+        HPO = 'HP:0000006'
+    elif MOI == 'Autosomal dominant inheritance (with paternal imprinting (HP:0012274))':
+        HPO = 'HP:0012274'
+    elif MOI == 'Autosomal dominant inheritance (mosaic)':
+        HPO = ['HP:0000006','HP:0001442']
+    elif MOI == 'Autosomal recessive inheritance':
+        HPO = 'HP:0000007'
+    elif MOI == 'Autosomal recessive inheritance (with genetic anticipation)':
+        HPO = ['HP:0000007'] # Need to check the second HPO
+        logging.warning("This record has inconsistencies in the mode of inheritence  at the source %s"%EREPO_LINK)
+    elif MOI == 'X-linked inheritance':
+        HPO = 'HP:0001417'
+    elif MOI == 'X-linked inheritance (dominant (HP:0001423))':
+            HPO = 'HP:0001423'
+    elif MOI == 'X-linked inheritance (recessive (HP:0001419))':
+        HPO = 'HP:0001419'
+    elif MOI == 'Semidominant inheritance':
+        HPO = 'HP:0032113'
+    elif MOI == 'Mitochondrial inheritance':
+        HPO = 'HP:0001427'
+    elif MOI == 'Mitochondrial inheritance (primarily or exclusively heteroplasmic)':
+        HPO = 'HP:0001427'  # No HPO term for heteroplasmic type
+    return {'label': MOI, 'HPO': HPO}
