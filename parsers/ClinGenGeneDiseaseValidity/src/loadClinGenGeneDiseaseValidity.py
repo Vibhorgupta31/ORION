@@ -85,9 +85,13 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
                                   lambda line: 'gene_associated_with_condition',  # predicate extractor
                                   lambda line: {},  # subject properties
                                   lambda line: {},  # object properties
-                                  lambda line: {},  # edge properties
+                                  lambda line: {'Mode_Of_Inheritance': line[ClinGenGeneDiseaseValidityCOLS.MOI.value],
+                                                'Classification': line[ClinGenGeneDiseaseValidityCOLS.CLASSIFICATION.value],
+                                                'Classification_Date': line[ClinGenGeneDiseaseValidityCOLS.CLASSIFICATION_DATE.value],
+                                                'Classification_Report': line[ClinGenGeneDiseaseValidityCOLS.ONLINE_REPORT.value]},  # edge properties
                                   comment_character='#',
                                   delim=',',
                                   has_header_row=True)
         return extractor.load_metadata
 
+# We can't normalize the Mode of Inheritance, as the data in the file is not suffice enough to get the MOI
