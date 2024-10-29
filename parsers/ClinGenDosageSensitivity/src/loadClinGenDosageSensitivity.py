@@ -4,7 +4,7 @@ import gzip
 
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
-from Common.node_types import PRIMARY_KNOWLEDGE_SOURCE
+from biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
 from Common.prefixes import HGNC  # only an example, use existing curie prefixes or add your own to the prefixes file
 from Common.utils import GetData
 from datetime import date
@@ -52,7 +52,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         """
         super().__init__(test_mode=test_mode, source_data_dir=source_data_dir)
 
-        self.cligen_dosage_sensitivity_url = 'ftp://ftp.clinicalgenome.org/'
+        self.cligen_dosage_sensitivity_url = 'http://ftp.clinicalgenome.org/'
         self.cligen_dosage_sensitivity_gene_file = 'ClinGen_gene_curation_list_GRCh38.tsv'
         self.clingen_dosage_sensitivity_region_file = "ClinGen_region_curation_list_GRCh38.tsv"
         self.data_files = [self.cligen_dosage_sensitivity_gene_file, self.clingen_dosage_sensitivity_region_file]
