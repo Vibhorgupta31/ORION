@@ -170,7 +170,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
 # Created a common function to take the score value and return attributes,
 # this may have problems with TS and HI score where the mode of inheritance is captured, followed ClinGen criteria for converting scores
 def get_edge_properties(hi_score, ts_score, hi_mondo_id, ts_mondo_id):
-    if hi_mondo_id != "" and ts_mondo_id != "":
+    if hi_mondo_id != "" or ts_mondo_id != "":
         try:
             hi_score = int(hi_score)
             ts_score = int(ts_score)
@@ -180,7 +180,7 @@ def get_edge_properties(hi_score, ts_score, hi_mondo_id, ts_mondo_id):
             return {"negated": False}
         elif hi_mondo_id == 30 or ts_score == 30:
             return {"negated": False, "mode_of_inheritence": "Autosomal Recessive"}
-        elif hi_score == 40 or ts_score == 40:
+        elif hi_score == 40 or ts_score == 40:  # another condition for negation
             return {"negated": True}
-    else:
+    else:  # Negate only if no HI disease and TS disease is available for the gene
         return {"negated": True}
