@@ -1,4 +1,5 @@
 import csv
+from typing import Mapping, Optional
 from Common.kgxmodel import kgxnode, kgxedge
 from Common.kgx_file_writer import KGXFileWriter
 from Common.biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, AGGREGATOR_KNOWLEDGE_SOURCES
@@ -24,6 +25,10 @@ class Extractor:
 
         self.file_writer = file_writer
 
+    def generator_extract(self, tuple_extractor):
+        for edge in tuple_extractor():
+            self.process_tuple(**edge)
+    
     def csv_extract(self, infile,
                     subject_extractor,
                     object_extractor=None,
@@ -39,32 +44,32 @@ class Extractor:
                     exclude_unconnected_nodes=False):
         """Read a csv, perform callbacks to retrieve node and edge info per row.
         Assumes that all of the properties extractable for a node occur on the line with the node identifier"""
-        skipped_header = False
-        for i, line in enumerate(infile, start=1):
-        
-            if comment_character is not None and line.startswith(comment_character):
-                continue
-
-            if has_header_row and not skipped_header:
-                skipped_header = True
-                continue
-
-            if filter_field is not None:
-                filter_field_value = line[:-1].split(delim)[filter_field]
-                if filter_field_value not in filter_set:
+        def tuple_extractor():
+            skipped_header = False
+            for line in infile:
+                if comment_character is not None and line.startswith(comment_character):
                     continue
 
-            self.load_metadata['record_counter'] += 1
-            try:
-                # TODO we should pass the whole file iterator to csv reader, just need to handle comments and headers
-                # CSV Reader expects a list of rows as input and outputs a list of strings.
-                # We process one at a time, so we pass "line" in as a list and take the first result.
+                if has_header_row and not skipped_header:
+                    skipped_header = True
+                    continue
+
+                if filter_field is not None:
+                    filter_field_value = line[:-1].split(delim)[filter_field]
+                    if filter_field_value not in filter_set:
+                        continue
+
                 reader = csv.reader([line], delimiter=delim)
                 split_row = list(reader)[0]
-                self.parse_row(split_row, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor, exclude_unconnected_nodes)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
+                yield {
+                    'subject_id': subject_extractor(split_row),
+                    'object_id': object_extractor(split_row) if object_extractor is not None else None,
+                    'predicate': predicate_extractor(split_row) if predicate_extractor is not None else None,
+                    'subjectprops': subject_property_extractor(split_row) if subject_property_extractor is not None else {},
+                    'objectprops': object_property_extractor(split_row) if object_property_extractor is not None else {},
+                    'edgeprops': edge_property_extractor(split_row) if edge_property_extractor is not None else {},
+                }
+        self.generator_extract(tuple_extractor)
 
     def sql_extract(self, cursor, sql_query, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor):
         """Read a csv, perform callbacks to retrieve node and edge info per row.
@@ -73,12 +78,7 @@ class Extractor:
         cursor.execute(sql_query)
         rows = cursor.fetchall()
         for row in rows:
-            self.load_metadata['record_counter'] += 1
-            try:
-                self.parse_row(row, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
+            self.parse_row(row, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
 
     def json_extract(self,
                      json_array,
@@ -89,13 +89,59 @@ class Extractor:
                      object_property_extractor,
                      edge_property_extractor):
         for item in json_array:
-            self.load_metadata['record_counter'] += 1
-            try:
-                self.parse_row(item, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
-                return
+            self.parse_row(item, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
+
+    def process_tuple(self,
+                      subject_id: str, object_id: Optional[str], predicate: Optional[str],
+                      subjectprops: Optional[Mapping[str, str]], objectprops: Optional[Mapping[str, str]],
+                      edgeprops: Optional[Mapping[str, str]], exclude_unconnected_nodes=False):
+
+        if exclude_unconnected_nodes and not predicate:
+            return
+        self.load_metadata['record_counter'] += 1
+        try:
+            subjectprops = subjectprops or {}
+            objectprops = objectprops or {}
+            edgeprops = edgeprops or {}
+
+            # if we  haven't seen the subject before, add it to nodes
+            if subject_id and subject_id not in self.node_ids:
+                subject_name = subjectprops.pop('name', '')
+                subject_categories = subjectprops.pop('categories', None)
+                subject_node = kgxnode(subject_id, name=subject_name, categories=subject_categories, nodeprops=subjectprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_node(subject_node)
+                else:
+                    self.nodes.append(subject_node)
+                    self.node_ids.add(subject_id)
+
+            # if we  haven't seen the object before, add it to nodes
+            if object_id and object_id not in self.node_ids:
+                object_name = objectprops.pop('name', '')
+                object_categories = objectprops.pop('categories', None)
+                object_node = kgxnode(object_id, name=object_name, categories=object_categories, nodeprops=objectprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_node(object_node)
+                else:
+                    self.nodes.append(object_node)
+                    self.node_ids.add(object_id)
+
+            if subject_id and object_id and predicate:
+                primary_knowledge_source = edgeprops.pop(PRIMARY_KNOWLEDGE_SOURCE, None)
+                aggregator_knowledge_sources = edgeprops.pop(AGGREGATOR_KNOWLEDGE_SOURCES, None)
+                edge = kgxedge(subject_id,
+                            object_id,
+                            predicate=predicate,
+                            primary_knowledge_source=primary_knowledge_source,
+                            aggregator_knowledge_sources=aggregator_knowledge_sources,
+                            edgeprops=edgeprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_edge(edge)
+                else:
+                    self.edges.append(edge)
+        except Exception as e:
+            self.load_metadata['errors'].append(e.__str__())
+            self.load_metadata['skipped_record_counter'] += 1
 
     def parse_row(self,
                   row,
@@ -116,41 +162,7 @@ class Extractor:
         objectprops = object_property_extractor(row) if object_property_extractor is not None else {}
         edgeprops = edge_property_extractor(row) if edge_property_extractor is not None else {}
 
-        # if we  haven't seen the subject before, add it to nodes
-        if subject_id and subject_id not in self.node_ids:
-            subject_name = subjectprops.pop('name', '')
-            subject_categories = subjectprops.pop('categories', None)
-            subject_node = kgxnode(subject_id, name=subject_name, categories=subject_categories, nodeprops=subjectprops)
-            if self.file_writer:
-                self.file_writer.write_kgx_node(subject_node)
-            else:
-                self.nodes.append(subject_node)
-                self.node_ids.add(subject_id)
-
-        # if we  haven't seen the object before, add it to nodes
-        if object_id and object_id not in self.node_ids:
-            object_name = objectprops.pop('name', '')
-            object_categories = objectprops.pop('categories', None)
-            object_node = kgxnode(object_id, name=object_name, categories=object_categories, nodeprops=objectprops)
-            if self.file_writer:
-                self.file_writer.write_kgx_node(object_node)
-            else:
-                self.nodes.append(object_node)
-                self.node_ids.add(object_id)
-
-        if subject_id and object_id and predicate:
-            primary_knowledge_source = edgeprops.pop(PRIMARY_KNOWLEDGE_SOURCE, None)
-            aggregator_knowledge_sources = edgeprops.pop(AGGREGATOR_KNOWLEDGE_SOURCES, None)
-            edge = kgxedge(subject_id,
-                           object_id,
-                           predicate=predicate,
-                           primary_knowledge_source=primary_knowledge_source,
-                           aggregator_knowledge_sources=aggregator_knowledge_sources,
-                           edgeprops=edgeprops)
-            if self.file_writer:
-                self.file_writer.write_kgx_edge(edge)
-            else:
-                self.edges.append(edge)
+        self.process_tuple(subject_id, object_id, predicate, subjectprops, objectprops, edgeprops, exclude_unconnected_nodes)
 
     def get_node_ids(self):
         if self.file_writer:
