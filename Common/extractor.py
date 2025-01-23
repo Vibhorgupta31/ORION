@@ -25,14 +25,9 @@ class Extractor:
 
         self.file_writer = file_writer
 
-    def generator_extract(self, tuple_generator):
-        for edge in tuple_generator:
-            self.load_metadata['record_counter'] += 1
-            try:
-                self.process_tuple(**edge)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
+    def generator_extract(self, tuple_extractor):
+        for edge in tuple_extractor:
+            self.process_tuple(**edge)
     
     # TODO: test and see if this can replace original csv_extract
     def csv_extract2(self, infile,
@@ -50,7 +45,7 @@ class Extractor:
                     exclude_unconnected_nodes=False):
         """Read a csv, perform callbacks to retrieve node and edge info per row.
         Assumes that all of the properties extractable for a node occur on the line with the node identifier"""
-        def tuple_generator():
+        def tuple_extractor():
             for line in infile:
                 if comment_character is not None and line.startswith(comment_character):
                     continue
@@ -74,7 +69,7 @@ class Extractor:
                     'objectprops': object_property_extractor(split_row),
                     'edgeprops': edge_property_extractor(split_row),
                 }
-        self.generator_extract(tuple_generator)
+        self.generator_extract(tuple_extractor)
 
     def csv_extract(self, infile,
                     subject_extractor,
@@ -154,34 +149,41 @@ class Extractor:
                       subjectprops: Optional[Mapping[str, str]], objectprops: Optional[Mapping[str, str]],
                       edgeprops: Optional[Mapping[str, str]], exclude_unconnected_nodes=False):
 
-        subjectprops = subjectprops or {}
-        objectprops = objectprops or {}
-        edgeprops = edgeprops or {}
+        if exclude_unconnected_nodes and not predicate:
+            return
+        self.load_metadata['record_counter'] += 1
+        try:
+            subjectprops = subjectprops or {}
+            objectprops = objectprops or {}
+            edgeprops = edgeprops or {}
 
-        # if we  haven't seen the subject before, add it to nodes
-        if subject_id and subject_id not in self.node_ids:
-            subject_name = subjectprops.pop('name', '')
-            subject_categories = subjectprops.pop('categories', None)
-            subject_node = kgxnode(subject_id, name=subject_name, categories=subject_categories, nodeprops=subjectprops)
-            if self.file_writer:
-                self.file_writer.write_kgx_node(subject_node)
-            else:
-                self.nodes.append(subject_node)
-                self.node_ids.add(subject_id)
+            # if we  haven't seen the subject before, add it to nodes
+            if subject_id and subject_id not in self.node_ids:
+                subject_name = subjectprops.pop('name', '')
+                subject_categories = subjectprops.pop('categories', None)
+                subject_node = kgxnode(subject_id, name=subject_name, categories=subject_categories, nodeprops=subjectprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_node(subject_node)
+                else:
+                    self.nodes.append(subject_node)
+                    self.node_ids.add(subject_id)
 
-        if subject_id and object_id and predicate:
-            primary_knowledge_source = edgeprops.pop(PRIMARY_KNOWLEDGE_SOURCE, None)
-            aggregator_knowledge_sources = edgeprops.pop(AGGREGATOR_KNOWLEDGE_SOURCES, None)
-            edge = kgxedge(subject_id,
-                           object_id,
-                           predicate=predicate,
-                           primary_knowledge_source=primary_knowledge_source,
-                           aggregator_knowledge_sources=aggregator_knowledge_sources,
-                           edgeprops=edgeprops)
-            if self.file_writer:
-                self.file_writer.write_kgx_edge(edge)
-            else:
-                self.edges.append(edge)
+            if subject_id and object_id and predicate:
+                primary_knowledge_source = edgeprops.pop(PRIMARY_KNOWLEDGE_SOURCE, None)
+                aggregator_knowledge_sources = edgeprops.pop(AGGREGATOR_KNOWLEDGE_SOURCES, None)
+                edge = kgxedge(subject_id,
+                            object_id,
+                            predicate=predicate,
+                            primary_knowledge_source=primary_knowledge_source,
+                            aggregator_knowledge_sources=aggregator_knowledge_sources,
+                            edgeprops=edgeprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_edge(edge)
+                else:
+                    self.edges.append(edge)
+        except Exception as e:
+            self.load_metadata['errors'].append(e.__str__())
+            self.load_metadata['skipped_record_counter'] += 1
 
     def parse_row(self,
                   row,
