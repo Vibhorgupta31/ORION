@@ -70,34 +70,12 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
                 fp,
                 subject_extractor,
                 # subject id
-                lambda line: (
-                    "MONDO:0700096"
-                    if ((line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] == "") and (
-                            line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] == ""))
-                    else (line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] if (
-                            line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] != "") else line[
-                        ClinGenDosageSensitivityCOLS.TS_DISEASE.value])),
+                [lambda line: line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value], lambda line: line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value]],
                 # object id
                 lambda line: predicate,  # predicate extractor
                 lambda line: {},  # subject properties
-                lambda line: {},  # object properties
-                lambda line: dict(
-                    {
-                        PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                        "Haploinsufficiency Description": line[
-                            ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
-                        ],
-                        "Triplosensitivity Description": line[
-                            ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
-                        ],
-                    },
-                    **get_edge_properties(
-                        line[ClinGenDosageSensitivityCOLS.HI_SCORE.value],
-                        line[ClinGenDosageSensitivityCOLS.TS_SCORE.value],
-                        line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
-                        line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
-                    ),
-                ),
+                [lambda line:{}],  # object properties
+                lambda line: {},
                 # edge properties
                 comment_character="#",
                 delim="\t",
@@ -124,7 +102,8 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         
         self.process_dosage_sensitivity_file(extractor, dosage_sensitivity_gene_file,
                                              lambda line: f"NCBIGene:{line[ClinGenDosageSensitivityCOLS.GENE.value]}",
-                                             "gene associated with condition")
+                                             "gene associated with condition",
+                                             )
         self.process_dosage_sensitivity_file(extractor, dosage_sensitivity_region_file,
                                             lambda line: f"ISCARegion:{line[ClinGenDosageSensitivityCOLS.REGION.value]}",
                                             "region associated with condition")
