@@ -1,9 +1,9 @@
 # testing graph spec
 graphs:
-  - graph_id: clingen_data
-    graph_name: clingen_data
-    graph_description: 'ClinGen gene disease validity data '
-    graph_url: 'http://localhost/fake_graph_url_for_tesing_baseline'
+  - graph_id: clingen_gene_validity_data
+    graph_name: clingen_gene_validity_data
+    graph_description: 'Graph build on ClinGen gene validity curations https://search.clinicalgenome.org/kb/gene-validity'
+    graph_url: ''
     output_format: none
     sources:
       - source_id: ClinGenGeneDiseaseValidity

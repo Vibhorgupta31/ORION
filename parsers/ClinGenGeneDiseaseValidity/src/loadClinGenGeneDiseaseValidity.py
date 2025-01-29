@@ -50,7 +50,7 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
 
     def get_latest_source_version(self) -> str:
         # No version is availble at the source, using the date as versioning proxy
-        latest_version = date.today().strftime("%Y%m%d")
+        latest_version = date.today().strftime("%Y%m")
         return latest_version
 
     def get_data(self) -> bool:
@@ -66,17 +66,11 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
 
         :return: ret_val: load_metadata
         """
-        # raw comments **
-        # This is a made up example of how one might extract nodes and edges from a tsv file
-        # In this case it's taking the subject ID from column 1 and the object ID from column 3,
-        # prepending them with a curie prefix. The predicate comes from column 3. The value in column 4
-        # is set as a property on the edge.
         extractor = Extractor(file_writer=self.output_file_writer)
         gene_disease_data_file: str = os.path.join(
             self.data_path, self.gene_disease_data_file
         )
         # print(os.path.join(self.data_path, self.gene_disease_data_file)) for_debugging
-
         # Need to incorporate the logic to skip the intial metadata rows
         # either skipped record counter or using loop, rn the normaliztion version is working fine
         with open(gene_disease_data_file, "rt") as fp:
@@ -108,4 +102,4 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
         return extractor.load_metadata
 
 
-# We can't normalize the Mode of Inheritance or MOI , as the data in the file is not suffice enough to get the MOI
+# We can't directly normalize the Mode of Inheritance or MOI , as the data in the file is not suffice enough to get the MOI
