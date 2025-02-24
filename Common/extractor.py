@@ -120,12 +120,7 @@ class Extractor:
         cursor.execute(sql_query)
         rows = cursor.fetchall()
         for row in rows:
-            self.load_metadata['record_counter'] += 1
-            try:
-                self.parse_row(row, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
+            self.parse_row(row, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
 
     def json_extract(self,
                      json_array,
@@ -136,13 +131,7 @@ class Extractor:
                      object_property_extractor,
                      edge_property_extractor):
         for item in json_array:
-            self.load_metadata['record_counter'] += 1
-            try:
-                self.parse_row(item, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
-            except Exception as e:
-                self.load_metadata['errors'].append(e.__str__())
-                self.load_metadata['skipped_record_counter'] += 1
-                return
+            self.parse_row(item, subject_extractor, object_extractor, predicate_extractor, subject_property_extractor, object_property_extractor, edge_property_extractor)
 
     def process_tuple(self,
                       subject_id: str, object_id: Optional[str], predicate: Optional[str],
