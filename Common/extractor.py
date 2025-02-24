@@ -26,7 +26,7 @@ class Extractor:
         self.file_writer = file_writer
 
     def generator_extract(self, tuple_extractor):
-        for edge in tuple_extractor:
+        for edge in tuple_extractor():
             self.process_tuple(**edge)
     
     # TODO: test and see if this can replace original csv_extract
@@ -46,6 +46,7 @@ class Extractor:
         """Read a csv, perform callbacks to retrieve node and edge info per row.
         Assumes that all of the properties extractable for a node occur on the line with the node identifier"""
         def tuple_extractor():
+            skipped_header = False
             for line in infile:
                 if comment_character is not None and line.startswith(comment_character):
                     continue
@@ -156,6 +157,17 @@ class Extractor:
                 else:
                     self.nodes.append(subject_node)
                     self.node_ids.add(subject_id)
+
+            # if we  haven't seen the object before, add it to nodes
+            if object_id and object_id not in self.node_ids:
+                object_name = objectprops.pop('name', '')
+                object_categories = objectprops.pop('categories', None)
+                object_node = kgxnode(object_id, name=object_name, categories=object_categories, nodeprops=objectprops)
+                if self.file_writer:
+                    self.file_writer.write_kgx_node(object_node)
+                else:
+                    self.nodes.append(object_node)
+                    self.node_ids.add(object_id)
 
             if subject_id and object_id and predicate:
                 primary_knowledge_source = edgeprops.pop(PRIMARY_KNOWLEDGE_SOURCE, None)
