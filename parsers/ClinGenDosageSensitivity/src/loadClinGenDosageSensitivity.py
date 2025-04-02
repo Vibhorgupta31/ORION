@@ -10,25 +10,17 @@ from datetime import date
 
 # For parsing tsv files
 # HI: HaploInsufficiency ; TS : TriploSensitivity
-class ClinGenDosageSensitivityGeneCOLS(enum.IntEnum):
-    GENE = 1
-    HI_DISEASE_GENE = -2
-    TS_DISEASE_GENE = -1
-    HI_SCORE_GENE = 4
-    HI_DESCRIPTION_GENE = 5
-    TS_SCORE_GENE = 12
-    TS_DESCRIPTION_GENE = 13
-
-
-class ClinGenDosageSensitivityRegionCOLS(enum.IntEnum):
+class ClinGenDosageSensitivityCOLS(enum.IntEnum):
     REGION = 0
-    HI_DISEASE_REGION = -2
-    TS_DISEASE_REGION = -1
+    GENE = 1
+    HI_DISEASE = -2
+    TS_DISEASE = -1
     HI_SCORE_REGION = 4
-    HI_DESCRIPTION_REGION = 5
-    TS_SCORE_REGION = 12
-    TS_DESCRIPTION_REGION = 13
+    HI_DESCRIPTION = 5
+    TS_SCORE = 12
+    TS_DESCRIPTION = 13
 
+HUMAN_DISEASE = "MONDO:0700096"
 
 ##############
 # Class: ClinGen Dosage Sensitivity  data loader
@@ -73,6 +65,58 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
             data_puller.pull_via_http(source_data_url, self.data_path)
         return True
 
+    def edge_generator(self, subject_column, data_file: str) -> Generator[dict]:
+        with open(data_file, "rt") as fp:
+            for line in fp:
+                if line.startswith("#"):
+                    continue
+                if len(line) == 0:
+                    continue
+                line = line.strip().split("\t")
+
+                # TODO: fix edge properties so not redundant
+                # TODO: skip unevaluated edges?
+                if line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] != "":
+                    yield {
+                        'subject_id': f"NCBIGene:{line[subject_column]}",
+                        'object_id': line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
+                        'predicate': "gene associated with condition", 
+                        'subject_properties': {},
+                        'object_properties': {},
+                        'edge_properties': dict(
+                            {
+                                PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                                "Haploinsufficiency Description": line[
+                                    ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
+                                ],
+                            }
+                            **get_edge_properties(
+                                line[ClinGenDosageSensitivityCOLS.HI_SCORE.value],
+                                line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
+                            )),
+                    }   
+
+                if line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] != "":
+                    yield {
+                        'subject_id': f"NCBIGene:{line[subject_column]}",
+                        'object_id': line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
+                        'predicate': "gene associated with condition", 
+                        'subject_properties': {},
+                        'object_properties': {},
+                        'edge_properties': dict(
+                            {
+                                PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                                "Haploinsufficiency Description": line[
+                                    ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
+                                ],
+                            }
+                            **get_edge_properties(
+                                line[ClinGenDosageSensitivityCOLS.TS_SCORE.value],
+                                line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
+                            )),
+                    } 
+
+
     def parse_data(self) -> dict:
         """
         Parses the data file for graph nodes/edges
@@ -87,100 +131,44 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         dosage_sensitivity_gene_file: str = os.path.join(
             self.data_path, self.cligen_dosage_sensitivity_gene_file
         )
+
+        extractor.json_extract(
+            self.edge_generator(ClinGenDosageSensitivityCOLS.GENE.VALUE, dosage_sensitivity_gene_file),
+            lambda element: element["subject_id"],
+            lambda element: element["object_id"],
+            lambda element: element["predicate"],
+            lambda element: element["subject_properties"],
+            lambda element: element["object_properties"],
+            lambda element: element["edge_properties"]
+        )
+
         dosage_sensitivity_region_file: str = os.path.join(
             self.data_path, self.clingen_dosage_sensitivity_region_file
         )
-        with open(dosage_sensitivity_gene_file, "rt") as fp:
-            extractor.csv_extract2(
-                fp,
-                lambda line: f"NCBIGene:{line[ClinGenDosageSensitivityGeneCOLS.GENE.value]}",
-                # subject id
-                lambda line: (
-                    "MONDO:0700096"
-                    if ((line[ClinGenDosageSensitivityGeneCOLS.HI_DISEASE_GENE.value] == "") and (line[ClinGenDosageSensitivityGeneCOLS.TS_DISEASE_GENE.value]== ""))
-                    else (line[ClinGenDosageSensitivityGeneCOLS.HI_DISEASE_GENE.value] if (line[ClinGenDosageSensitivityGeneCOLS.HI_DISEASE_GENE.value]!= "")else line[ClinGenDosageSensitivityGeneCOLS.TS_DISEASE_GENE.value])),
-                # object id
-                lambda line: "gene associated with condition",  # predicate extractor
-                lambda line: {},  # subject properties
-                lambda line: {},  # object properties
-                lambda line: dict(
-                    {
-                        PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                        "Haploinsufficiency Description": line[
-                            ClinGenDosageSensitivityGeneCOLS.HI_DESCRIPTION_GENE.value
-                        ],
-                        "Triplosensitivity Description": line[
-                            ClinGenDosageSensitivityGeneCOLS.TS_DESCRIPTION_GENE.value
-                        ],
-                    },
-                    **get_edge_properties(
-                        line[ClinGenDosageSensitivityGeneCOLS.HI_SCORE_GENE.value],
-                        line[ClinGenDosageSensitivityGeneCOLS.TS_SCORE_GENE.value],
-                        line[ClinGenDosageSensitivityGeneCOLS.HI_DISEASE_GENE.value],
-                        line[ClinGenDosageSensitivityGeneCOLS.TS_DISEASE_GENE.value],
-                    ),
-                ),
-                # edge properties
-                comment_character="#",
-                delim="\t",
-                has_header_row=True,
-            )
 
-        with open(dosage_sensitivity_region_file, "rt") as fp:
-            extractor.csv_extract(
-                fp,
-                lambda line: f"ISCARegion:{line[ClinGenDosageSensitivityRegionCOLS.REGION.value]}",
-                # subject id
-                lambda line: (
-                    "MONDO:0700096" if ((line[ClinGenDosageSensitivityRegionCOLS.HI_DISEASE_REGION.value] == "" ) and ( line[ClinGenDosageSensitivityRegionCOLS.TS_DISEASE_REGION.value]== ""))
-                    else (line[ClinGenDosageSensitivityRegionCOLS.HI_DISEASE_REGION.value] if (line[ClinGenDosageSensitivityRegionCOLS.HI_DISEASE_REGION.value]!= "")else line[ClinGenDosageSensitivityRegionCOLS.TS_DISEASE_REGION.value])),
-                # object id
-                lambda line: "region associated with condition",  # predicate extractor
-                lambda line: {},  # subject properties
-                lambda line: {},  # object properties
-                lambda line: dict(
-                    {
-                        PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                        "Haploinsufficiency Description": line[
-                            ClinGenDosageSensitivityRegionCOLS.HI_DESCRIPTION_REGION.value
-                        ],
-                        "Triplosensitivity Description": line[
-                            ClinGenDosageSensitivityRegionCOLS.TS_DESCRIPTION_REGION.value
-                        ],
-                    },
-                    **get_edge_properties(
-                        line[ClinGenDosageSensitivityRegionCOLS.HI_SCORE_REGION.value],
-                        line[ClinGenDosageSensitivityRegionCOLS.TS_SCORE_REGION.value],
-                        line[
-                            ClinGenDosageSensitivityRegionCOLS.HI_DISEASE_REGION.value
-                        ],
-                        line[
-                            ClinGenDosageSensitivityRegionCOLS.TS_DISEASE_REGION.value
-                        ],
-                    ),
-                ),
-                # edge properties
-                comment_character="#",
-                delim="\t",
-                has_header_row=True,
-            )
+        extractor.json_extract(
+            self.edge_generator(ClinGenDosageSensitivityCOLS.REGION.VALUE, dosage_sensitivity_region_file),
+            lambda element: element["subject_id"],
+            lambda element: element["object_id"],
+            lambda element: element["predicate"],
+            lambda element: element["subject_properties"],
+            lambda element: element["object_properties"],
+            lambda element: element["edge_properties"]
+        )
+
         return extractor.load_metadata
 
 
 # Created a common function to take the score value and return attributes,
 # this may have problems with TS and HI score where the mode of inheritance is captured, followed ClinGen criteria for converting scores
-def get_edge_properties(hi_score, ts_score, hi_mondo_id, ts_mondo_id):
-    if hi_mondo_id != "" or ts_mondo_id != "":
-        try:
-            hi_score = int(hi_score)
-            ts_score = int(ts_score)
-        except ValueError:
-            return {"Status": "Not yet evaluated"}
-        if (hi_score in (0, 1, 2, 3)) or (ts_score in (0, 1, 2, 3)):
-            return {"negated": False}
-        elif hi_mondo_id == 30 or ts_score == 30:
-            return {"negated": False, "mode_of_inheritence": "Autosomal Recessive"}
-        elif hi_score == 40 or ts_score == 40:  # another condition for negation
-            return {"negated": True}
-    else:  # Negate only if no HI disease and TS disease is available for the gene
+def get_edge_properties(score, mondo_id):
+    try:
+        score = int(score)
+    except ValueError:
+        return {"Status": "Not yet evaluated"}
+    if score in (0, 1, 2, 3):
+        return {"negated": False}
+    elif score == 30:
+        return {"negated": False, "mode_of_inheritence": "Autosomal Recessive"}
+    elif score == 40:  # another condition for negation
         return {"negated": True}
