@@ -15,7 +15,7 @@ class ClinGenDosageSensitivityCOLS(enum.IntEnum):
     GENE = 1
     HI_DISEASE = -2
     TS_DISEASE = -1
-    HI_SCORE_REGION = 4
+    HI_SCORE= 4
     HI_DESCRIPTION = 5
     TS_SCORE = 12
     TS_DESCRIPTION = 13
@@ -65,7 +65,14 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
             data_puller.pull_via_http(source_data_url, self.data_path)
         return True
 
-    def edge_generator(self, subject_column, data_file: str) -> Generator[dict]:
+    def dosage_sensitivity_edge_generator(self, data_file: str, subject_extractor):
+        """
+        Generator function to yield edges from the dosage sensitivity data file.
+
+        :param data_file: Path to the data file.
+        :param subject_extractor: Function to extract subject ID.
+        :return: Generator yielding edges as dictionaries.
+        """
         with open(data_file, "rt") as fp:
             for line in fp:
                 if line.startswith("#"):
@@ -73,49 +80,35 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
                 if len(line) == 0:
                     continue
                 line = line.strip().split("\t")
-
-                # TODO: fix edge properties so not redundant
-                # TODO: skip unevaluated edges?
-                if line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] != "":
-                    yield {
-                        'subject_id': f"NCBIGene:{line[subject_column]}",
-                        'object_id': line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
-                        'predicate': "gene associated with condition", 
-                        'subject_properties': {},
-                        'object_properties': {},
-                        'edge_properties': dict(
-                            {
-                                PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                                "Haploinsufficiency Description": line[
-                                    ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
-                                ],
-                            }
-                            **get_edge_properties(
-                                line[ClinGenDosageSensitivityCOLS.HI_SCORE.value],
-                                line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
-                            )),
-                    }   
-
-                if line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] != "":
-                    yield {
-                        'subject_id': f"NCBIGene:{line[subject_column]}",
-                        'object_id': line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
-                        'predicate': "gene associated with condition", 
-                        'subject_properties': {},
-                        'object_properties': {},
-                        'edge_properties': dict(
-                            {
-                                PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                                "Haploinsufficiency Description": line[
-                                    ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
-                                ],
-                            }
-                            **get_edge_properties(
-                                line[ClinGenDosageSensitivityCOLS.TS_SCORE.value],
-                                line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
-                            )),
-                    } 
-
+                
+                record = {
+                    'subject': subject_extractor(line),
+                    'object': line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value] or HUMAN_DISEASE,
+                    'predicate': "gene associated with condition",
+                    'subject_properties': {},
+                    'object_properties': {},
+                    'edge_properties': {
+                        PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                        "Haploinsufficiency Description": line[
+                            ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
+                        ],
+                        **get_edge_properties(line[ClinGenDosageSensitivityCOLS.HI_SCORE.value])
+                    },
+                }
+                if (line[ClinGenDosageSensitivityCOLS.HI_SCORE.value] != 'Not yet evaluated'):
+                    yield record
+                
+                # replace with relevant TS fields
+                record['object'] = line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] or HUMAN_DISEASE
+                record['edge_properties'] = {
+                    PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                    "Triplosensitivity Description": line[
+                        ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
+                    ],
+                    **get_edge_properties(line[ClinGenDosageSensitivityCOLS.TS_SCORE.value])
+                }
+                if (line[ClinGenDosageSensitivityCOLS.TS_SCORE.value] != 'Not yet evaluated'):
+                    yield record
 
     def parse_data(self) -> dict:
         """
@@ -133,42 +126,41 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         )
 
         extractor.json_extract(
-            self.edge_generator(ClinGenDosageSensitivityCOLS.GENE.VALUE, dosage_sensitivity_gene_file),
-            lambda element: element["subject_id"],
-            lambda element: element["object_id"],
-            lambda element: element["predicate"],
-            lambda element: element["subject_properties"],
-            lambda element: element["object_properties"],
-            lambda element: element["edge_properties"]
-        )
+            self.dosage_sensitivity_edge_generator(
+                dosage_sensitivity_gene_file,
+                subject_extractor=lambda line: 'NCBIGene:%s'%line[ClinGenDosageSensitivityCOLS.GENE.VALUE])
 
         dosage_sensitivity_region_file: str = os.path.join(
             self.data_path, self.clingen_dosage_sensitivity_region_file
         )
 
         extractor.json_extract(
-            self.edge_generator(ClinGenDosageSensitivityCOLS.REGION.VALUE, dosage_sensitivity_region_file),
-            lambda element: element["subject_id"],
-            lambda element: element["object_id"],
-            lambda element: element["predicate"],
-            lambda element: element["subject_properties"],
-            lambda element: element["object_properties"],
-            lambda element: element["edge_properties"]
-        )
+            self.dosage_sensitivity_edge_generator(
+                dosage_sensitivity_region_file,
+                subject_extractor=lambda line: line[ClinGenDosageSensitivityCOLS.REGION.VALUE])
 
         return extractor.load_metadata
 
 
 # Created a common function to take the score value and return attributes,
 # this may have problems with TS and HI score where the mode of inheritance is captured, followed ClinGen criteria for converting scores
-def get_edge_properties(score, mondo_id):
+# Numeric scores are as describe in the 
+# [ClinGen Dosage Sensitivity Curation Guidelines](https://clinicalgenome.org/docs/dosage-standard-operating-procedure-scoring-guide)
+# 0: No evidence available
+# 1: Little evidence for dosage pathogenicity
+# 2: Some evidence for dosage pathogenicity
+# 3: Sufficient evidence for dosage pathogenicity
+# 30: Gene associated with autosomal recessive phenotype (so haploinsufficiency not applicable)
+# 40: Dosage sensitivity unlikely
+def get_edge_properties(score):
     try:
         score = int(score)
     except ValueError:
         return {"Status": "Not yet evaluated"}
-    if score in (0, 1, 2, 3):
-        return {"negated": False}
+    if score in (1, 2, 3):
+        return {"negated": False, "dosage_sensitivity_score": score}
     elif score == 30:
-        return {"negated": False, "mode_of_inheritence": "Autosomal Recessive"}
-    elif score == 40:  # another condition for negation
+        # negating since recessive inheritance implies that loss of one allele is unlikely to cause disease
+        return {"negated": True}
+    elif score in (0, 40):  # another condition for negation
         return {"negated": True}
