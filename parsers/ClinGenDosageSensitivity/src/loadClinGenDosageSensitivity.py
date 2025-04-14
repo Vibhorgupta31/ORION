@@ -88,11 +88,11 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
                     'subject_properties': {},
                     'object_properties': {},
                     'edge_properties': {
-                        PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                        "Haploinsufficiency Description": line[
-                            ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
-                        ],
-                        **get_edge_properties(line[ClinGenDosageSensitivityCOLS.HI_SCORE.value])
+                        # PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                        # "Haploinsufficiency Description": line[
+                        #     ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
+                        # ],
+                        # **get_edge_properties(line[ClinGenDosageSensitivityCOLS.HI_SCORE.value])
                     },
                 }
                 if (line[ClinGenDosageSensitivityCOLS.HI_SCORE.value] != 'Not yet evaluated'):
@@ -101,11 +101,11 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
                 # replace with relevant TS fields
                 record['object'] = line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] or HUMAN_DISEASE
                 record['edge_properties'] = {
-                    PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                    "Triplosensitivity Description": line[
-                        ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
-                    ],
-                    **get_edge_properties(line[ClinGenDosageSensitivityCOLS.TS_SCORE.value])
+                    # PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
+                    # "Triplosensitivity Description": line[
+                    #     ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
+                    # ],
+                    # **get_edge_properties(line[ClinGenDosageSensitivityCOLS.TS_SCORE.value])
                 }
                 if (line[ClinGenDosageSensitivityCOLS.TS_SCORE.value] != 'Not yet evaluated'):
                     yield record
@@ -128,7 +128,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         extractor.json_extract(
             self.dosage_sensitivity_edge_generator(
                 dosage_sensitivity_gene_file,
-                subject_extractor=lambda line: 'NCBIGene:%s'%line[ClinGenDosageSensitivityCOLS.GENE.VALUE])
+                subject_extractor=lambda line: 'NCBIGene:%s'%line[ClinGenDosageSensitivityCOLS.GENE.value]))
 
         dosage_sensitivity_region_file: str = os.path.join(
             self.data_path, self.clingen_dosage_sensitivity_region_file
@@ -137,7 +137,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         extractor.json_extract(
             self.dosage_sensitivity_edge_generator(
                 dosage_sensitivity_region_file,
-                subject_extractor=lambda line: line[ClinGenDosageSensitivityCOLS.REGION.VALUE])
+                subject_extractor=lambda line: line[ClinGenDosageSensitivityCOLS.REGION.value]))
 
         return extractor.load_metadata
 
