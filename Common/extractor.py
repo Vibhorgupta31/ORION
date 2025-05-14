@@ -82,12 +82,12 @@ class Extractor:
 
     def json_extract(self,
                      json_array,
-                     subject_extractor,
-                     object_extractor,
-                     predicate_extractor,
-                     subject_property_extractor,
-                     object_property_extractor,
-                     edge_property_extractor):
+                     subject_extractor=lambda e: e.get('subject'),
+                     object_extractor=lambda e: e.get('object'),
+                     predicate_extractor=lambda e: e.get('predicate'),
+                     subject_property_extractor=lambda e: e.get('subject_properties'),
+                     object_property_extractor=lambda e: e.get('object_properties'),
+                     edge_property_extractor=lambda e: e.get('edge_properties')):
         for item in json_array:
             self.load_metadata['record_counter'] += 1
             try:
