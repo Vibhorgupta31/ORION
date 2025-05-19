@@ -63,7 +63,7 @@ SOURCE_DATA_LOADER_CLASS_IMPORTS = {
     CCIDB: ("parsers.CCIDB.src.loadCCIDB", "CCIDBLoader"),
     CHEBI_PROPERTIES: ("parsers.chebi.src.loadChebiProperties", "ChebiPropertiesLoader"),
     CLINICAL_TRIALS_KP: ("parsers.clinicaltrials.src.loadCTKP", "CTKPLoader"),
-CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
+    CLINGEN_DOSAGE_SENSITIVITY: ("parsers.ClinGenDosageSensitivity.src.loadClinGenDosageSensitivity", "ClinGenDosageSensitivityLoader"),
     CORD19: ("parsers.cord19.src.loadCord19", "Cord19Loader"),
     COHD: ("parsers.cohd.src.loadCOHD", "COHDLoader"),
     CTD: ("parsers.CTD.src.loadCTD", "CTDLoader"),
