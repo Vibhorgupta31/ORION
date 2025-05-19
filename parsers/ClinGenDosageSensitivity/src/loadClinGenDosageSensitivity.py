@@ -1,6 +1,5 @@
 import os
 import enum
-import gzip
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
 from biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
@@ -40,15 +39,15 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         :param source_data_dir - the specific storage directory to save files in
         """
         super().__init__(test_mode=test_mode, source_data_dir=source_data_dir)
-        self.cligen_dosage_sensitivity_url = "http://ftp.clinicalgenome.org/"
-        self.cligen_dosage_sensitivity_gene_file = (
+        self.clingen_dosage_sensitivity_url = "http://ftp.clinicalgenome.org/"
+        self.clingen_dosage_sensitivity_gene_file = (
             "ClinGen_gene_curation_list_GRCh38.tsv"
         )
         self.clingen_dosage_sensitivity_region_file = (
             "ClinGen_region_curation_list_GRCh38.tsv"
         )
         self.data_files = [
-            self.cligen_dosage_sensitivity_gene_file,
+            self.clingen_dosage_sensitivity_gene_file,
             self.clingen_dosage_sensitivity_region_file,
         ]
 
@@ -61,7 +60,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         # get_data is responsible for fetching the files in self.data_files and saving them to self.data_path
         data_puller = GetData()
         for source in self.data_files:
-            source_data_url = f"{self.cligen_dosage_sensitivity_url}{source}"
+            source_data_url = f"{self.clingen_dosage_sensitivity_url}{source}"
             data_puller.pull_via_http(source_data_url, self.data_path)
         return True
 
@@ -145,7 +144,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         extractor = Extractor(file_writer=self.output_file_writer)
         # Gene file processing
         dosage_sensitivity_gene_file: str = os.path.join(
-            self.data_path, self.cligen_dosage_sensitivity_gene_file
+            self.data_path, self.clingen_dosage_sensitivity_gene_file
         )
         extractor.json_extract(
             self.dosage_sensitivity_edge_generator(
