@@ -1,7 +1,5 @@
 import os
 import enum
-import gzip
-import re
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
 from biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
@@ -10,7 +8,7 @@ from Common.utils import LoggingUtil
 from datetime import date
 
 
-# Parsing the columns in the csv file downloaded from clingen source
+# Parsing the columns in the csv file downloaded from clingen source ( https://search.clinicalgenome.org/kb/gene-validity/download )
 class ClinGenGeneDiseaseValidityCOLS(enum.IntEnum):
     GENE_SYMBOL = 0
     GENE_ID = 1
@@ -24,52 +22,6 @@ class ClinGenGeneDiseaseValidityCOLS(enum.IntEnum):
     GCEP = 9
 
 
-# Supporting function for processing the data
-
-logger = LoggingUtil.init_logging(
-    "ORION.parsers.ClinGenGeneDiseaseValidityLoader",
-    log_file_path=os.environ["ORION_LOGS"],
-)
-
-# Normalizing the mode_of_inheritance for a disease
-
-moi_lookup = {
-    "AD": {
-        "ClinGen_label": "AD",
-        "normalized_label": "Autosomal Dominant",
-        "HPO": "0000006",
-    },
-    "AR": {
-        "ClinGen_label": "AR",
-        "normalized_label": "Autosomal Recessive",
-        "HPO": "0000007",
-    },
-    "MT": {
-        "ClinGen_label": "MT",
-        "normalized_label": "Mitochondrial",
-        "HPO": "0001427",
-    },
-    "SD": {"ClinGen_label": "SD", "normalized_label": "Semidominant", "HPO": "0032113"},
-    "XL": {"ClinGen_label": "XL", "normalized_label": "X-linked", "HPO": "0001417"},
-    "UD": {
-        "ClinGen_label": "UD",
-        "normalized_label": "Undetermined Mode of Inheritance",
-        "HPO": None,
-    },
-}
-
-
-def moi_normalizer(moi, gene, disease):
-    try:
-        normalized_moi = moi_lookup[moi]
-    except KeyError:
-        normalized_moi = {"label": None, "HPO": None}
-        logger.info(
-            f"No mapping available for {moi} in the moi lookup dictionary for the gene {gene} - disease {disease} pair"
-        )
-    return normalized_moi
-
-
 ##############
 # Class: ClinGenGeneDiseaseValidity  source loader
 #
@@ -81,6 +33,8 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
     provenance_id: str = "infores:clingen"
     # increment parsing_version whenever changes are made to the parser that would result in changes to parsing output
     parsing_version: str = "1.0"
+    # source data
+    source_data_url: str = "https://search.clinicalgenome.org/kb/gene-validity/download"
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
@@ -88,13 +42,12 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
         :param source_data_dir - the specific storage directory to save files in
         """
         super().__init__(test_mode=test_mode, source_data_dir=source_data_dir)
-        # Issue with the file path, need to check this out
         self.data_url = "https://search.clinicalgenome.org/kb/gene-validity/"
         self.gene_disease_data_file = "download"
         self.data_files = [self.gene_disease_data_file]
 
     def get_latest_source_version(self) -> str:
-        # No version is availble at the source, using the date as versioning proxy
+        # No version is available at the source, using the year_month as versioning proxy
         latest_version = date.today().strftime("%Y%m")
         return latest_version
 
@@ -104,6 +57,47 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
         data_puller = GetData()
         data_puller.pull_via_http(source_data_url, self.data_path)
         return True
+
+    # Created function for normalizing MODE_OF_INHERITANCE of the disease using the moi_lookup dictionary
+
+    moi_lookup = {
+        "AD": {
+            "ClinGen_label": "AD",
+            "normalized_label": "Autosomal Dominant",
+            "HPO": "0000006",
+        },
+        "AR": {
+            "ClinGen_label": "AR",
+            "normalized_label": "Autosomal Recessive",
+            "HPO": "0000007",
+        },
+        "MT": {
+            "ClinGen_label": "MT",
+            "normalized_label": "Mitochondrial",
+            "HPO": "0001427",
+        },
+        "SD": {
+            "ClinGen_label": "SD",
+            "normalized_label": "Semidominant",
+            "HPO": "0032113",
+        },
+        "XL": {"ClinGen_label": "XL", "normalized_label": "X-linked", "HPO": "0001417"},
+        "UD": {
+            "ClinGen_label": "UD",
+            "normalized_label": "Undetermined Mode of Inheritance",
+            "HPO": None,
+        },
+    }
+
+    def moi_normalizer(self, moi, gene, disease):
+        try:
+            normalized_moi = self.moi_lookup[moi]
+        except KeyError:
+            normalized_moi = {"label": None, "HPO": None}
+            self.logger.info(
+                f"No mapping available for {moi} in the moi lookup dictionary for the gene {gene} - disease {disease} pair"
+            )
+        return normalized_moi
 
     def parse_data(self) -> dict:
         """
@@ -115,9 +109,9 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
         gene_disease_data_file: str = os.path.join(
             self.data_path, self.gene_disease_data_file
         )
-        # print(os.path.join(self.data_path, self.gene_disease_data_file)) for_debugging
-        # Need to incorporate the logic to skip the intial metadata rows
-        # either skipped record counter or using loop, rn the normaliztion version is working fine
+
+        # Need to incorporate the logic to skip the initial metadata rows
+        # either skipped record counter or using loop, rn due the ORION normalization it's working fine
         with open(gene_disease_data_file, "rt") as fp:
             extractor.csv_extract(
                 fp,
@@ -127,18 +121,18 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
                 lambda line: {},  # subject properties
                 lambda line: {},  # object properties
                 lambda line: {
-                    "Mode_of_Inheritance": moi_normalizer(
+                    "MODE_OF_INHERITANCE": self.moi_normalizer(
                         line[ClinGenGeneDiseaseValidityCOLS.MOI.value],
                         line[ClinGenGeneDiseaseValidityCOLS.GENE_ID.value],
                         line[ClinGenGeneDiseaseValidityCOLS.DISEASE_ID.value],
                     ),
-                    "ClinGen_Validity_Classification": line[
+                    "CLINGEN_VALIDITY_CLASSIFICATION": line[
                         ClinGenGeneDiseaseValidityCOLS.CLASSIFICATION.value
                     ],
-                    "ClinGen_Classification_Date": line[
+                    "CLINGEN_CLASSIFICATION_DATE": line[
                         ClinGenGeneDiseaseValidityCOLS.CLASSIFICATION_DATE.value
                     ],
-                    "ClinGen_Classification_Report": line[
+                    "CLINGEN_CLASSIFICATION_REPORT": line[
                         ClinGenGeneDiseaseValidityCOLS.ONLINE_REPORT.value
                     ],
                 },  # edge properties
@@ -147,6 +141,3 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
                 has_header_row=True,
             )
         return extractor.load_metadata
-
-
-# We can't directly normalize the Mode of Inheritance or MOI , as the data in the file is not suffice enough to get the MOI
