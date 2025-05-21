@@ -19,8 +19,19 @@ class ClinGenVariantPathogenicityLoader(SourceDataLoader):
     # increment parsing_version whenever changes are made to the parser that would result in changes to parsing output
     parsing_version: str = "1.0"
     # source_data
-    source_data_url: str = "http://erepo.clinicalgenome.org/evrepo/api/classifications/all?format=tabbed"
-    has_sequence_variants = True  # Flag to use robokop_genetics server to tackle sequence variant data
+    source_data_url: str = (
+        "http://erepo.clinicalgenome.org/evrepo/api/classifications/all?format=tabbed"
+    )
+    attribution: str = (
+        "https://clinicalgenome.org/curation-activities/variant-pathogenicity/"
+    )
+    license: str = "https://creativecommons.org/publicdomain/zero/1.0/"
+    description: str = (
+        "ClinGen variant curation utilizes the 2015 American College of Medical Genetics and Genomics (ACMG) guideline for sequence variant interpretation, which provides an evidence-based framework to classify variants. The results of these analyses will be deposited in ClinVar for community access."
+    )
+    has_sequence_variants = (
+        True  # Flag to use robokop_genetics server to tackle sequence variant data
+    )
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
