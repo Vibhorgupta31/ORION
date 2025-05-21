@@ -35,6 +35,13 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
     parsing_version: str = "1.0"
     # source data
     source_data_url: str = "https://search.clinicalgenome.org/kb/gene-validity/download"
+    attribution: str = (
+        "https://clinicalgenome.org/curation-activities/gene-disease-validity/"
+    )
+    description: str = (
+        "The ClinGen Gene-Disease Clinical Validity curation process involves evaluating the strength of evidence supporting or refuting a claim that variation in a particular gene causes a particular monogenic disease."
+    )
+    license: str = "https://creativecommons.org/publicdomain/zero/1.0/"
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
@@ -47,7 +54,7 @@ class ClinGenGeneDiseaseValidityLoader(SourceDataLoader):
         self.data_files = [self.gene_disease_data_file]
 
     def get_latest_source_version(self) -> str:
-        # No version is available at the source, using the year_month as versioning proxy
+        # No version is available at the source, using the year_month when the code was run as versioning proxy
         latest_version = date.today().strftime("%Y%m")
         return latest_version
 
