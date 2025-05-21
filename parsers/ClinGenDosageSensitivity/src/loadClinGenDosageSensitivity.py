@@ -1,26 +1,15 @@
 import os
-import enum
 from Common.extractor import Extractor
 from Common.loader_interface import SourceDataLoader
 from biolink_constants import PRIMARY_KNOWLEDGE_SOURCE, NODE_TYPES, SEQUENCE_VARIANT
 from Common.utils import GetData
 from datetime import date
+import csv
 
 
-# For parsing tsv files
-# HI: HaploInsufficiency ; TS : TriploSensitivity
-class ClinGenDosageSensitivityCOLS(enum.IntEnum):
-    REGION = 0
-    GENE = 1
-    HI_DISEASE = -2
-    TS_DISEASE = -1
-    HI_SCORE = 4
-    HI_DESCRIPTION = 5
-    TS_SCORE = 12
-    TS_DESCRIPTION = 13
-
-
+# Constants for data processing
 HUMAN_DISEASE = "MONDO:0700096"
+HEADER_ROW = 5
 
 
 ##############
@@ -32,6 +21,18 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
     provenance_id: str = "infores:clingen"
     # increment parsing_version whenever changes are made to the parser that would result in changes to parsing output
     parsing_version: str = "v1.0"
+    # source data url
+    source_data_url: str = {
+        "Gene List": "ftp://ftp.clinicalgenome.org/ClinGen_gene_curation_list_GRCh38.tsv",
+        "Region List": "ftp://ftp.clinicalgenome.org/ClinGen_region_curation_list_GRCh38.tsv",
+    }
+    attribution: str = (
+        "https://clinicalgenome.org/curation-activities/dosage-sensitivity/"
+    )
+    description: str = (
+        "The ClinGen Dosage Sensitivity curation process collects evidence supporting/refuting the haploinsufficiency and triplosensitivity of genes and genomic regions."
+    )
+    license: str = "https://creativecommons.org/publicdomain/zero/1.0/"
 
     def __init__(self, test_mode: bool = False, source_data_dir: str = None):
         """
@@ -67,72 +68,56 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
     def dosage_sensitivity_edge_generator(
         self,
         data_file: str,
-        subject_extractor,
+        subject,
         predicate,
     ):
         """
         Generator function to yield edges from the dosage sensitivity data file.
 
         :param data_file: Path to the data file.
-        :param subject_extractor: Function to extract subject ID.
+        :param subject: Key to extract subject from the file, this varies depending on the data file.
         :param predicate: predicate associated with the relationship between subject and object.
         :return: Generator yielding edges as dictionaries.
         """
         with open(data_file, "rt") as fp:
-            for line in fp:
-                if line.startswith("#"):
-                    continue
-                if len(line) == 0:
-                    continue
-                line = line.strip("\n").split("\t")
-
+            file_with_metadata = fp.readlines()
+            file_without_metadata = file_with_metadata[HEADER_ROW:]
+            data = csv.DictReader(file_without_metadata, dialect="excel-tab")
+            for line in data:
                 record = {
-                    "subject": subject_extractor(line),
-                    "object": line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value]
-                    or HUMAN_DISEASE,
+                    "subject": f"NCBIGene:{line[subject]}",
+                    "object": line["Haploinsufficiency Disease ID"] or HUMAN_DISEASE,
                     "predicate": predicate,
                     "subject_properties": {},
                     "object_properties": {},
                     "edge_properties": {
                         PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                        "Haploinsufficiency Description": line[
-                            ClinGenDosageSensitivityCOLS.HI_DESCRIPTION.value
+                        "HAPLOINSUFFICIENCY DESCRIPTION": line[
+                            "Haploinsufficiency Description"
                         ],
-                        "Haploinsufficiency Score": line[
-                            ClinGenDosageSensitivityCOLS.HI_SCORE.value
-                        ],
+                        "HAPLOINSUFFICIENCY SCORE": line["Haploinsufficiency Score"],
                         **get_edge_properties(
-                            line[ClinGenDosageSensitivityCOLS.HI_SCORE.value],
-                            line[ClinGenDosageSensitivityCOLS.HI_DISEASE.value],
+                            line["Haploinsufficiency Score"],
+                            line["Haploinsufficiency Disease ID"],
                         ),
                     },
                 }
-                if (
-                    line[ClinGenDosageSensitivityCOLS.HI_SCORE.value]
-                    != "Not yet evaluated"
-                ):
+                if line["Haploinsufficiency Score"] != "Not yet evaluated":
                     yield record
 
-                record["object"] = (
-                    line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value] or HUMAN_DISEASE
-                )
+                record["object"] = line["Triplosensitivity Disease ID"] or HUMAN_DISEASE
                 record["edge_properties"] = {
                     PRIMARY_KNOWLEDGE_SOURCE: self.provenance_id,
-                    "Triplosensitivity Description": line[
-                        ClinGenDosageSensitivityCOLS.TS_DESCRIPTION.value
+                    "TRIPLOSENSITIVITY DESCRIPTION": line[
+                        "Triplosensitivity Description"
                     ],
-                    "Triplosensitivity Score": line[
-                        ClinGenDosageSensitivityCOLS.TS_SCORE.value
-                    ],
+                    "TRIPLOSENSITIVITY SCORE": line["Triplosensitivity Score"],
                     **get_edge_properties(
-                        line[ClinGenDosageSensitivityCOLS.TS_SCORE.value],
-                        line[ClinGenDosageSensitivityCOLS.TS_DISEASE.value],
+                        line["Triplosensitivity Score"],
+                        line["Triplosensitivity Disease ID"],
                     ),
                 }
-                if (
-                    line[ClinGenDosageSensitivityCOLS.TS_SCORE.value]
-                    != "Not yet evaluated"
-                ):
+                if line["Triplosensitivity Score"] != "Not yet evaluated":
                     yield record
 
     def parse_data(self) -> dict:
@@ -149,8 +134,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         extractor.json_extract(
             self.dosage_sensitivity_edge_generator(
                 dosage_sensitivity_gene_file,
-                subject_extractor=lambda line: "NCBIGene:%s"
-                % line[ClinGenDosageSensitivityCOLS.GENE.value],
+                subject="Gene ID",
                 predicate="gene associated with condition",
             )
         )
@@ -161,9 +145,7 @@ class ClinGenDosageSensitivityLoader(SourceDataLoader):
         extractor.json_extract(
             self.dosage_sensitivity_edge_generator(
                 dosage_sensitivity_region_file,
-                subject_extractor=lambda line: line[
-                    ClinGenDosageSensitivityCOLS.REGION.value
-                ],
+                subject="#ISCA ID",
                 predicate="region associated with condition",
             )
         )
